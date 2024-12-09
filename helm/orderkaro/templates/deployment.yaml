@@ -1,0 +1,76 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}
+  labels:
+    {{- include "orderkaro.labels" . | nindent 4 }}
+  annotations:
+    kubernetes.io/change-cause: "{{ .Values.deployment.changeCause | default "Initial deployment" }}"
+spec:
+  replicas: {{ .Values.app.replicaCount }}
+  strategy:
+    type: {{ .Values.app.deployment.strategy.type }}
+    rollingUpdate:
+      maxSurge: {{ .Values.app.deployment.strategy.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.app.deployment.strategy.rollingUpdate.maxUnavailable }}
+  selector:
+    matchLabels:
+      {{- include "orderkaro.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "orderkaro.labels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ .Release.Name }}
+      {{- with .Values.app.deployment.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.app.deployment.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.app.deployment.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.app.image.repository }}:{{ .Values.app.image.tag }}"
+          imagePullPolicy: {{ .Values.app.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health/
+              port: http
+            initialDelaySeconds: {{ .Values.app.deployment.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.app.deployment.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.app.deployment.probes.liveness.timeoutSeconds }}
+            successThreshold: {{ .Values.app.deployment.probes.liveness.successThreshold }}
+            failureThreshold: {{ .Values.app.deployment.probes.liveness.failureThreshold }}
+          readinessProbe:
+            httpGet:
+              path: /health/
+              port: http
+            initialDelaySeconds: {{ .Values.app.deployment.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.app.deployment.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.app.deployment.probes.readiness.timeoutSeconds }}
+            successThreshold: {{ .Values.app.deployment.probes.readiness.successThreshold }}
+            failureThreshold: {{ .Values.app.deployment.probes.readiness.failureThreshold }}
+          resources:
+            {{- toYaml .Values.app.resources | nindent 12 }}
+          envFrom:
+            - configMapRef:
+                name: {{ .Release.Name }}-config
+            - secretRef:
+                name: {{ .Release.Name }}-secret
+          lifecycle:
+            preStop:
+              exec:
+                command: ["/bin/sh", "-c", "sleep 10"]

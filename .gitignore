@@ -1,0 +1,20 @@
+# Add this content to .gitignore
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.env
+
+# Terraform
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+.terraformrc
+terraform.rc
+
+# IDE
+.vscode/
+.idea/
+*.swp

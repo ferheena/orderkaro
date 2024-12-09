@@ -1,0 +1,16 @@
+{{- if .Values.configmap.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-config
+  labels:
+    {{- include "orderkaro.labels" . | nindent 4 }}
+data:
+  DJANGO_SETTINGS_MODULE: {{ .Values.app.env.DJANGO_SETTINGS_MODULE }}
+  DJANGO_ALLOWED_HOSTS: {{ .Values.app.env.DJANGO_ALLOWED_HOSTS }}
+  AWS_REGION: {{ .Values.app.env.AWS_REGION }}
+  DEBUG: {{ .Values.app.env.DEBUG | quote }}
+  {{- if .Values.app.env.extraEnvVars }}
+  {{- toYaml .Values.app.env.extraEnvVars | nindent 2 }}
+  {{- end }}
+{{- end }}

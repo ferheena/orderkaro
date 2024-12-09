@@ -1,0 +1,35 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ .Release.Name }}-alerts
+  labels:
+    release: {{ .Release.Name }}
+spec:
+  groups:
+    - name: orderkaro.rules
+      rules:
+        - alert: HighCPUUsage
+          expr: container_cpu_usage_seconds_total{pod=~"orderkaro-.*"} > 80
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            description: "Container CPU usage is above 80%"
+            
+        - alert: HighMemoryUsage
+          expr: container_memory_usage_bytes{pod=~"orderkaro-.*"} > 85
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            description: "Container memory usage is above 85%"
+
+        - alert: PodCrashLooping
+          expr: rate(kube_pod_container_status_restarts_total{pod=~"orderkaro-.*"}[5m]) > 0
+          for: 2m
+          labels:
+            severity: critical
+          annotations:
+            description: "Pod {{ $labels.pod }} is crash looping"
+{{- end }}

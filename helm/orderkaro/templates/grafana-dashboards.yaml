@@ -1,0 +1,47 @@
+{{- if .Values.monitoring.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-grafana-dashboards
+  labels:
+    grafana_dashboard: "1"
+data:
+  orderkaro-dashboard.json: |-
+    {
+      "dashboard": {
+        "title": "OrderKaro Overview",
+        "panels": [
+          {
+            "title": "CPU Usage",
+            "type": "graph",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "sum(rate(container_cpu_usage_seconds_total{pod=~\"orderkaro-.*\"}[5m])) by (pod)"
+              }
+            ]
+          },
+          {
+            "title": "Memory Usage",
+            "type": "graph",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "sum(container_memory_usage_bytes{pod=~\"orderkaro-.*\"}) by (pod)"
+              }
+            ]
+          },
+          {
+            "title": "HTTP Request Rate",
+            "type": "graph",
+            "datasource": "Prometheus",
+            "targets": [
+              {
+                "expr": "sum(rate(http_requests_total{service=\"orderkaro\"}[5m])) by (status_code)"
+              }
+            ]
+          }
+        ]
+      }
+    }
+{{- end }}

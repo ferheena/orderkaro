@@ -1,0 +1,109 @@
+app:
+  name: orderkaro
+  replicaCount: 2
+  
+  image:
+    repository: ""
+    tag: latest
+    pullPolicy: Always
+
+  deployment:
+    strategy:
+      type: RollingUpdate
+      rollingUpdate:
+        maxSurge: 25%
+        maxUnavailable: 25%
+    
+    podDisruptionBudget:
+      enabled: true
+      minAvailable: 1
+
+    probes:
+      liveness:
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 3
+      readiness:
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 5
+        successThreshold: 1
+        failureThreshold: 3
+
+    affinity:
+      podAntiAffinity:
+        preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchExpressions:
+                  - key: app.kubernetes.io/name
+                    operator: In
+                    values:
+                      - orderkaro
+              topologyKey: kubernetes.io/hostname
+
+    nodeSelector: {}
+    tolerations: []
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+
+
+  monitoring:
+  enabled: true
+  grafana:
+    adminPassword: ""
+    persistence:
+      enabled: true
+      size: 10Gi
+  dashboardProviders:
+      dashboardproviders.yaml:
+        apiVersion: 1
+        providers:
+          - name: 'default'
+            orgId: 1
+            folder: ''
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards
+
+
+  prometheus:
+    retention: 15d
+    resources:
+      requests:
+        cpu: 500m
+        memory: 512Mi
+      limits:
+        cpu: 1000m
+        memory: 1Gi
+
+  
+  alertmanager:
+    enabled: true
+    config:
+      global:
+        slack_api_url: ""  # To be provided via secret
+      receivers:
+        - name: 'slack'
+          slack_configs:
+            - channel: '#alerts'
+              title: "{{ .GroupLabels.alertname }}"
+              text: "{{ .CommonAnnotations.description }}"
+  
